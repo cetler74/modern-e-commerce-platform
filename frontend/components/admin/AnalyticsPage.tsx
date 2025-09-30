@@ -211,3 +211,30 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Subscription Metrics</CardTitle>
+            <CardDescription>Active subscription performance</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Active Subscriptions</span>
+                <span className="font-medium">{metrics?.activeSubscriptions || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Monthly Recurring Revenue</span>
+                <span className="font-medium">${(metrics?.mrr || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Churn Rate</span>
+                <span className="font-medium">{(metrics?.churnRate || 0).toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Average Revenue Per User</span>
+                <span className="font-medium">${(metrics?.arpu || 0).toFixed(2)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
