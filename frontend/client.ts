@@ -35,6 +35,8 @@ const BROWSER = typeof globalThis === "object" && ("window" in globalThis);
 export class Client {
     public readonly analytics: analytics.ServiceClient
     public readonly auth: auth.ServiceClient
+    public readonly cart: cart.ServiceClient
+    public readonly checkout: checkout.ServiceClient
     public readonly cms: cms.ServiceClient
     public readonly orders: orders.ServiceClient
     public readonly products: products.ServiceClient
@@ -56,6 +58,8 @@ export class Client {
         const base = new BaseClient(this.target, this.options)
         this.analytics = new analytics.ServiceClient(base)
         this.auth = new auth.ServiceClient(base)
+        this.cart = new cart.ServiceClient(base)
+        this.checkout = new checkout.ServiceClient(base)
         this.cms = new cms.ServiceClient(base)
         this.orders = new orders.ServiceClient(base)
         this.products = new products.ServiceClient(base)
@@ -95,6 +99,11 @@ export interface ClientOptions {
  * Import the endpoint handlers to derive the types for the client.
  */
 import { getDashboardMetrics as api_analytics_dashboard_getDashboardMetrics } from "~backend/analytics/dashboard";
+import {
+    getProductPerformance as api_analytics_reports_getProductPerformance,
+    getSalesReport as api_analytics_reports_getSalesReport
+} from "~backend/analytics/reports";
+import { trackEvent as api_analytics_track_trackEvent } from "~backend/analytics/track";
 
 export namespace analytics {
 
@@ -104,6 +113,9 @@ export namespace analytics {
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
             this.getDashboardMetrics = this.getDashboardMetrics.bind(this)
+            this.getProductPerformance = this.getProductPerformance.bind(this)
+            this.getSalesReport = this.getSalesReport.bind(this)
+            this.trackEvent = this.trackEvent.bind(this)
         }
 
         /**
@@ -118,6 +130,36 @@ export namespace analytics {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/analytics/dashboard`, {query, method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_analytics_dashboard_getDashboardMetrics>
+        }
+
+        public async getProductPerformance(params: RequestType<typeof api_analytics_reports_getProductPerformance>): Promise<ResponseType<typeof api_analytics_reports_getProductPerformance>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                endDate:   params.endDate,
+                limit:     params.limit === undefined ? undefined : String(params.limit),
+                startDate: params.startDate,
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/analytics/products`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_analytics_reports_getProductPerformance>
+        }
+
+        public async getSalesReport(params: RequestType<typeof api_analytics_reports_getSalesReport>): Promise<ResponseType<typeof api_analytics_reports_getSalesReport>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                endDate:   params.endDate,
+                groupBy:   params.groupBy,
+                startDate: params.startDate,
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/analytics/sales`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_analytics_reports_getSalesReport>
+        }
+
+        public async trackEvent(params: RequestType<typeof api_analytics_track_trackEvent>): Promise<void> {
+            await this.baseClient.callTypedAPI(`/analytics/events`, {method: "POST", body: JSON.stringify(params)})
         }
     }
 }
@@ -162,10 +204,91 @@ export namespace auth {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import { add as api_cart_add_add } from "~backend/cart/add";
+import { get as api_cart_get_get } from "~backend/cart/get";
+import { remove as api_cart_remove_remove } from "~backend/cart/remove";
+import { update as api_cart_update_update } from "~backend/cart/update";
+
+export namespace cart {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.add = this.add.bind(this)
+            this.clear = this.clear.bind(this)
+            this.get = this.get.bind(this)
+            this.remove = this.remove.bind(this)
+            this.update = this.update.bind(this)
+        }
+
+        public async add(params: RequestType<typeof api_cart_add_add>): Promise<ResponseType<typeof api_cart_add_add>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/cart/items`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cart_add_add>
+        }
+
+        public async clear(): Promise<void> {
+            await this.baseClient.callTypedAPI(`/cart`, {method: "DELETE", body: undefined})
+        }
+
+        public async get(): Promise<ResponseType<typeof api_cart_get_get>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/cart`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cart_get_get>
+        }
+
+        public async remove(params: { id: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/cart/items/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+        }
+
+        public async update(params: RequestType<typeof api_cart_update_update>): Promise<ResponseType<typeof api_cart_update_update>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                quantity: params.quantity,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/cart/items/${encodeURIComponent(params.id)}`, {method: "PATCH", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cart_update_update>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import { process as api_checkout_process_process } from "~backend/checkout/process";
+
+export namespace checkout {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.process = this.process.bind(this)
+        }
+
+        public async process(params: RequestType<typeof api_checkout_process_process>): Promise<ResponseType<typeof api_checkout_process_process>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/checkout`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_checkout_process_process>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
 import {
     createBlogPost as api_cms_blog_createBlogPost,
     listBlogPosts as api_cms_blog_listBlogPosts
 } from "~backend/cms/blog";
+import { deleteBlogPost as api_cms_delete_deleteBlogPost } from "~backend/cms/delete";
+import { getBlogPost as api_cms_get_getBlogPost } from "~backend/cms/get";
+import { updateBlogPost as api_cms_update_updateBlogPost } from "~backend/cms/update";
 
 export namespace cms {
 
@@ -175,7 +298,10 @@ export namespace cms {
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
             this.createBlogPost = this.createBlogPost.bind(this)
+            this.deleteBlogPost = this.deleteBlogPost.bind(this)
+            this.getBlogPost = this.getBlogPost.bind(this)
             this.listBlogPosts = this.listBlogPosts.bind(this)
+            this.updateBlogPost = this.updateBlogPost.bind(this)
         }
 
         /**
@@ -185,6 +311,16 @@ export namespace cms {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/blog`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cms_blog_createBlogPost>
+        }
+
+        public async deleteBlogPost(params: { id: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/blog/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+        }
+
+        public async getBlogPost(params: { identifier: string }): Promise<ResponseType<typeof api_cms_get_getBlogPost>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/blog/${encodeURIComponent(params.identifier)}`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cms_get_getBlogPost>
         }
 
         /**
@@ -203,6 +339,24 @@ export namespace cms {
             const resp = await this.baseClient.callTypedAPI(`/blog`, {query, method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cms_blog_listBlogPosts>
         }
+
+        public async updateBlogPost(params: RequestType<typeof api_cms_update_updateBlogPost>): Promise<ResponseType<typeof api_cms_update_updateBlogPost>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                content:        params.content,
+                excerpt:        params.excerpt,
+                featuredImage:  params.featuredImage,
+                seoDescription: params.seoDescription,
+                seoTitle:       params.seoTitle,
+                status:         params.status,
+                tags:           params.tags,
+                title:          params.title,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/blog/${encodeURIComponent(params.id)}`, {method: "PATCH", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_cms_update_updateBlogPost>
+        }
     }
 }
 
@@ -210,7 +364,9 @@ export namespace cms {
  * Import the endpoint handlers to derive the types for the client.
  */
 import { create as api_orders_create_create } from "~backend/orders/create";
+import { get as api_orders_get_get } from "~backend/orders/get";
 import { list as api_orders_list_list } from "~backend/orders/list";
+import { update as api_orders_update_update } from "~backend/orders/update";
 
 export namespace orders {
 
@@ -220,7 +376,9 @@ export namespace orders {
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
             this.create = this.create.bind(this)
+            this.get = this.get.bind(this)
             this.list = this.list.bind(this)
+            this.update = this.update.bind(this)
         }
 
         /**
@@ -230,6 +388,12 @@ export namespace orders {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/orders`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_orders_create_create>
+        }
+
+        public async get(params: { id: string }): Promise<ResponseType<typeof api_orders_get_get>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/orders/${encodeURIComponent(params.id)}`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_orders_get_get>
         }
 
         /**
@@ -249,6 +413,19 @@ export namespace orders {
             const resp = await this.baseClient.callTypedAPI(`/orders`, {query, method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_orders_list_list>
         }
+
+        public async update(params: RequestType<typeof api_orders_update_update>): Promise<ResponseType<typeof api_orders_update_update>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                financialStatus: params.financialStatus,
+                notes:           params.notes,
+                status:          params.status,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/orders/${encodeURIComponent(params.id)}`, {method: "PATCH", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_orders_update_update>
+        }
     }
 }
 
@@ -256,8 +433,10 @@ export namespace orders {
  * Import the endpoint handlers to derive the types for the client.
  */
 import { create as api_products_create_create } from "~backend/products/create";
+import { deleteProduct as api_products_delete_deleteProduct } from "~backend/products/delete";
 import { get as api_products_get_get } from "~backend/products/get";
 import { list as api_products_list_list } from "~backend/products/list";
+import { update as api_products_update_update } from "~backend/products/update";
 
 export namespace products {
 
@@ -267,8 +446,10 @@ export namespace products {
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
             this.create = this.create.bind(this)
+            this.deleteProduct = this.deleteProduct.bind(this)
             this.get = this.get.bind(this)
             this.list = this.list.bind(this)
+            this.update = this.update.bind(this)
         }
 
         /**
@@ -278,6 +459,10 @@ export namespace products {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/products`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_products_create_create>
+        }
+
+        public async deleteProduct(params: { id: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/products/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
         }
 
         /**
@@ -306,12 +491,38 @@ export namespace products {
             const resp = await this.baseClient.callTypedAPI(`/products`, {query, method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_products_list_list>
         }
+
+        public async update(params: RequestType<typeof api_products_update_update>): Promise<ResponseType<typeof api_products_update_update>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                categoryIds:      params.categoryIds,
+                comparePrice:     params.comparePrice,
+                costPrice:        params.costPrice,
+                description:      params.description,
+                dimensions:       params.dimensions,
+                images:           params.images,
+                name:             params.name,
+                price:            params.price,
+                seoDescription:   params.seoDescription,
+                seoTitle:         params.seoTitle,
+                shortDescription: params.shortDescription,
+                sku:              params.sku,
+                status:           params.status,
+                tags:             params.tags,
+                weight:           params.weight,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/products/${encodeURIComponent(params.id)}`, {method: "PATCH", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_products_update_update>
+        }
     }
 }
 
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import { create as api_subscriptions_create_create } from "~backend/subscriptions/create";
 import { list as api_subscriptions_list_list } from "~backend/subscriptions/list";
 import { updateSubscription as api_subscriptions_manage_updateSubscription } from "~backend/subscriptions/manage";
 
@@ -322,8 +533,15 @@ export namespace subscriptions {
 
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
+            this.create = this.create.bind(this)
             this.list = this.list.bind(this)
             this.updateSubscription = this.updateSubscription.bind(this)
+        }
+
+        public async create(params: RequestType<typeof api_subscriptions_create_create>): Promise<ResponseType<typeof api_subscriptions_create_create>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/subscriptions`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_subscriptions_create_create>
         }
 
         /**
@@ -362,6 +580,12 @@ export namespace subscriptions {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import {
+    addAddress as api_users_addresses_addAddress,
+    deleteAddress as api_users_addresses_deleteAddress,
+    getAddresses as api_users_addresses_getAddresses,
+    updateAddress as api_users_addresses_updateAddress
+} from "~backend/users/addresses";
 import { list as api_users_list_list } from "~backend/users/list";
 import {
     getProfile as api_users_profile_getProfile,
@@ -375,9 +599,29 @@ export namespace users {
 
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
+            this.addAddress = this.addAddress.bind(this)
+            this.deleteAddress = this.deleteAddress.bind(this)
+            this.getAddresses = this.getAddresses.bind(this)
             this.getProfile = this.getProfile.bind(this)
             this.list = this.list.bind(this)
+            this.updateAddress = this.updateAddress.bind(this)
             this.updateProfile = this.updateProfile.bind(this)
+        }
+
+        public async addAddress(params: RequestType<typeof api_users_addresses_addAddress>): Promise<ResponseType<typeof api_users_addresses_addAddress>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/users/addresses`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_users_addresses_addAddress>
+        }
+
+        public async deleteAddress(params: { id: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/users/addresses/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+        }
+
+        public async getAddresses(): Promise<ResponseType<typeof api_users_addresses_getAddresses>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/users/addresses`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_users_addresses_getAddresses>
         }
 
         /**
@@ -396,6 +640,28 @@ export namespace users {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/users`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_users_list_list>
+        }
+
+        public async updateAddress(params: RequestType<typeof api_users_addresses_updateAddress>): Promise<ResponseType<typeof api_users_addresses_updateAddress>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                address1:  params.address1,
+                address2:  params.address2,
+                city:      params.city,
+                company:   params.company,
+                country:   params.country,
+                firstName: params.firstName,
+                isDefault: params.isDefault,
+                lastName:  params.lastName,
+                phone:     params.phone,
+                province:  params.province,
+                type:      params.type,
+                zip:       params.zip,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/users/addresses/${encodeURIComponent(params.id)}`, {method: "PATCH", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_users_addresses_updateAddress>
         }
 
         /**
