@@ -6,20 +6,22 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 export default function OrdersManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const { getBackend } = useAuth();
 
-  const { data: orders, isLoading } = useQuery({
+  const { data: ordersResponse, isLoading } = useQuery({
     queryKey: ['admin-orders', statusFilter],
-    queryFn: () => getBackend().orders.list({
+    queryFn: () => backend.orders.list({
       status: statusFilter || undefined,
       limit: 50
     }),
   });
+
+  const orders = ordersResponse?.orders || [];
+  const totalOrders = ordersResponse?.total || 0;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -116,7 +118,7 @@ export default function OrdersManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders?.orders.map((order) => (
+                  {orders.map((order: any) => (
                     <TableRow key={order.id}>
                       <TableCell>
                         <div className="font-mono text-sm font-medium">
@@ -161,7 +163,7 @@ export default function OrdersManagement() {
 
           <div className="flex items-center justify-between mt-6">
             <div className="text-sm text-gray-600">
-              Showing {orders?.orders.length || 0} of {orders?.total || 0} orders
+              Showing {orders.length} of {totalOrders} orders
             </div>
             <div className="flex space-x-2">
               <Button variant="outline" size="sm">Previous</Button>

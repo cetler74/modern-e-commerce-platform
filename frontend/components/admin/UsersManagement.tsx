@@ -7,16 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 export default function UsersManagement() {
   const [searchQuery, setSearchQuery] = useState('');
-  const { getBackend } = useAuth();
 
-  const { data: users, isLoading } = useQuery({
+  const { data: usersResponse, isLoading } = useQuery({
     queryKey: ['admin-users'],
-    queryFn: () => getBackend().users.list(),
+    queryFn: () => backend.users.list(),
   });
+
+  const users = usersResponse?.users || [];
+  const totalUsers = usersResponse?.total || 0;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -36,11 +38,11 @@ export default function UsersManagement() {
     }
   };
 
-  const filteredUsers = users?.users.filter(user =>
+  const filteredUsers = users.filter((user: any) =>
     user.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  );
 
   return (
     <div>
@@ -160,7 +162,7 @@ export default function UsersManagement() {
 
           <div className="flex items-center justify-between mt-6">
             <div className="text-sm text-gray-600">
-              Showing {filteredUsers.length} of {users?.total || 0} users
+              Showing {filteredUsers.length} of {totalUsers} users
             </div>
             <div className="flex space-x-2">
               <Button variant="outline" size="sm">Previous</Button>

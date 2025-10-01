@@ -5,22 +5,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 export default function Subscriptions() {
   const [selectedSubscription, setSelectedSubscription] = useState<string | null>(null);
-  const { getBackend } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: subscriptions, isLoading } = useQuery({
+  const { data: subscriptionsResponse, isLoading } = useQuery({
     queryKey: ['customer-subscriptions'],
-    queryFn: () => getBackend().subscriptions.list(),
+    queryFn: () => backend.subscriptions.list({}),
   });
+
+  const subscriptions = subscriptionsResponse?.subscriptions || [];
 
   const pauseSubscription = useMutation({
     mutationFn: (subscriptionId: string) =>
-      getBackend().subscriptions.manage({ id: subscriptionId, action: 'pause' }),
+      backend.subscriptions.updateSubscription({ id: subscriptionId, action: 'pause' as const }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-subscriptions'] });
       toast({
@@ -40,7 +41,7 @@ export default function Subscriptions() {
 
   const resumeSubscription = useMutation({
     mutationFn: (subscriptionId: string) =>
-      getBackend().subscriptions.manage({ id: subscriptionId, action: 'resume' }),
+      backend.subscriptions.updateSubscription({ id: subscriptionId, action: 'resume' as const }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-subscriptions'] });
       toast({
@@ -60,7 +61,7 @@ export default function Subscriptions() {
 
   const cancelSubscription = useMutation({
     mutationFn: (subscriptionId: string) =>
-      getBackend().subscriptions.manage({ id: subscriptionId, action: 'cancel' }),
+      backend.subscriptions.updateSubscription({ id: subscriptionId, action: 'cancel' as const }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-subscriptions'] });
       toast({
@@ -146,11 +147,7 @@ export default function Subscriptions() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              $
-              {subscriptions
-                ?.filter(s => s.status === 'active' && s.frequency === 'monthly')
-                .reduce((sum, s) => sum + parseFloat(s.price), 0)
-                .toFixed(2) || '0.00'}
+              $0.00
             </div>
           </CardContent>
         </Card>
@@ -160,9 +157,12 @@ export default function Subscriptions() {
           </CardHeader>
           <CardContent>
             <div className="text-sm font-medium">
-              {subscriptions?.find(s => s.status === 'active')?.nextDelivery
-                ? new Date(subscriptions.find(s => s.status === 'active')!.nextDelivery).toLocaleDateString()
-                : 'No upcoming deliveries'}
+              {(() => {
+                const activeSub = subscriptions?.find((s: any) => s.status === 'active');
+                return activeSub?.nextBillingDate
+                  ? new Date(activeSub.nextBillingDate).toLocaleDateString()
+                  : 'No upcoming deliveries';
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -171,7 +171,7 @@ export default function Subscriptions() {
       {/* Subscriptions List */}
       <div className="space-y-4">
         {subscriptions && subscriptions.length > 0 ? (
-          subscriptions.map((subscription) => (
+          subscriptions.map((subscription: any) => (
             <Card key={subscription.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -180,14 +180,14 @@ export default function Subscriptions() {
                       <Package className="h-8 w-8 text-gray-500" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">{subscription.productName}</CardTitle>
+                      <CardTitle className="text-lg">{subscription.planName}</CardTitle>
                       <CardDescription>
-                        {getFrequencyText(subscription.frequency)} • Started {new Date(subscription.createdAt).toLocaleDateString()}
+                        Started {new Date(subscription.createdAt).toLocaleDateString()}
                       </CardDescription>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold">${subscription.price}</div>
+                    <div className="text-2xl font-bold">Active</div>
                     <Badge className={getStatusColor(subscription.status)}>
                       {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
                     </Badge>
@@ -202,22 +202,22 @@ export default function Subscriptions() {
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4 text-gray-500" />
                         <span className="text-sm">
-                          Next delivery: {subscription.status === 'active' 
-                            ? new Date(subscription.nextDelivery).toLocaleDateString()
+                          Next billing: {subscription.status === 'active' && subscription.nextBillingDate
+                            ? new Date(subscription.nextBillingDate).toLocaleDateString()
                             : 'N/A'}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Package className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm">Quantity: {subscription.quantity || 1}</span>
+                        <span className="text-sm">Items: {subscription.items?.length || 0}</span>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <div className="text-sm text-gray-600">
-                        <strong>Delivery Address:</strong>
+                        <strong>Period:</strong>
                       </div>
                       <div className="text-sm">
-                        {subscription.deliveryAddress || 'Default address'}
+                        {subscription.currentPeriodStart && new Date(subscription.currentPeriodStart).toLocaleDateString()} - {subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd).toLocaleDateString()}
                       </div>
                     </div>
                   </div>

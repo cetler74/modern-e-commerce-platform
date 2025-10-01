@@ -1,25 +1,26 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Filter, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, Eye, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 export default function BlogManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const { getBackend } = useAuth();
 
-  const { data: blogPosts, isLoading } = useQuery({
+  const { data: blogPostsResponse, isLoading } = useQuery({
     queryKey: ['admin-blog', statusFilter],
-    queryFn: () => getBackend().cms.listBlogPosts({
+    queryFn: () => backend.cms.listBlogPosts({
       status: statusFilter || undefined,
       limit: 50
     }),
   });
+
+  const blogPosts = blogPostsResponse?.posts || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -30,10 +31,12 @@ export default function BlogManagement() {
     }
   };
 
-  const filteredPosts = blogPosts?.posts.filter(post =>
+  const filteredPosts = blogPosts.filter((post: any) =>
     post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     post.authorName.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
+
+  const totalPosts = blogPosts.length;
 
   return (
     <div>
@@ -171,7 +174,7 @@ export default function BlogManagement() {
 
           <div className="flex items-center justify-between mt-6">
             <div className="text-sm text-gray-600">
-              Showing {filteredPosts.length} of {blogPosts?.total || 0} posts
+              Showing {filteredPosts.length} of {totalPosts} posts
             </div>
             <div className="flex space-x-2">
               <Button variant="outline" size="sm">Previous</Button>

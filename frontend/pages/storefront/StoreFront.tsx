@@ -186,7 +186,7 @@ export default function StoreFront() {
       </section>
 
       {/* Blog Section */}
-      {blogPosts?.posts.length > 0 && (
+      {blogPosts?.posts && blogPosts.posts.length > 0 && (
         <section className="py-16 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
@@ -199,7 +199,7 @@ export default function StoreFront() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {blogPosts.posts.map((post) => (
+              {blogPosts?.posts?.map((post: any) => (
                 <Card key={post.id} className="group hover:shadow-lg transition-shadow">
                   <Link to={`/blog/${post.slug}`}>
                     {post.featuredImage && (

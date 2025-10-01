@@ -1,26 +1,26 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Filter, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, Eye, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 export default function ProductsManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const { getBackend } = useAuth();
-
-  const { data: products, isLoading } = useQuery({
+  const { data: productsResponse, isLoading } = useQuery({
     queryKey: ['admin-products', searchQuery, statusFilter],
-    queryFn: () => getBackend().products.list({
+    queryFn: () => backend.products.list({
       search: searchQuery || undefined,
       status: statusFilter || undefined,
       limit: 50
     }),
   });
+
+  const products = productsResponse?.products || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -30,6 +30,8 @@ export default function ProductsManagement() {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const totalProducts = products.length;
 
   return (
     <div>
@@ -94,7 +96,7 @@ export default function ProductsManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products?.products.map((product) => (
+                  {products.map((product: any) => (
                     <TableRow key={product.id}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
@@ -153,7 +155,7 @@ export default function ProductsManagement() {
 
           <div className="flex items-center justify-between mt-6">
             <div className="text-sm text-gray-600">
-              Showing {products?.products.length || 0} of {products?.total || 0} products
+              Showing {products.length} of {totalProducts} products
             </div>
             <div className="flex space-x-2">
               <Button variant="outline" size="sm">Previous</Button>

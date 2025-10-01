@@ -6,17 +6,18 @@ interface User {
   email: string;
   firstName: string;
   lastName: string;
+  avatarUrl?: string;
   roles: string[];
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
-  getBackend: () => typeof backend;
 }
 
 interface RegisterData {
@@ -79,24 +80,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('auth_user');
   };
 
-  const getBackend = () => {
-    if (token) {
-      return backend.with({
-        auth: () => Promise.resolve({ authorization: `Bearer ${token}` })
-      });
-    }
-    return backend;
-  };
+
 
   return (
     <AuthContext.Provider value={{
       user,
       token,
+      isAuthenticated: !!token,
       isLoading,
       login,
       register,
-      logout,
-      getBackend
+      logout
     }}>
       {children}
     </AuthContext.Provider>

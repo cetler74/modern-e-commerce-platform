@@ -1,14 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, TrendingDown, Users, ShoppingCart, CreditCard, Package } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 export default function Dashboard() {
-  const { getBackend } = useAuth();
 
   const { data: metrics, isLoading } = useQuery({
     queryKey: ['dashboard-metrics'],
-    queryFn: () => getBackend().analytics.getDashboardMetrics({}),
+    queryFn: () => backend.analytics.getDashboardMetrics({ period: '30d' }),
   });
 
   const MetricCard = ({ 

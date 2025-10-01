@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
@@ -17,28 +18,22 @@ export default function Profile() {
     dateOfBirth: '',
   });
   
-  const { getBackend, user } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['user-profile'],
-    queryFn: () => getBackend().users.getProfile(),
-    onSuccess: (data) => {
-      if (data) {
-        setFormData({
-          name: data.name || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          dateOfBirth: data.dateOfBirth || '',
-        });
-      }
-    },
+    queryFn: () => backend.users.getProfile(),
   });
 
   const updateProfile = useMutation({
-    mutationFn: (data: typeof formData) =>
-      getBackend().users.updateProfile(data),
+    mutationFn: (data: any) =>
+      backend.users.updateProfile({
+        firstName: data.name?.split(' ')[0],
+        lastName: data.name?.split(' ').slice(1).join(' '),
+        phone: data.phone
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       setIsEditing(false);
@@ -71,10 +66,10 @@ export default function Profile() {
   const handleCancel = () => {
     if (profile) {
       setFormData({
-        name: profile.name || '',
+        name: `${profile.firstName || ''} ${profile.lastName || ''}`,
         email: profile.email || '',
         phone: profile.phone || '',
-        dateOfBirth: profile.dateOfBirth || '',
+        dateOfBirth: '',
       });
     }
     setIsEditing(false);

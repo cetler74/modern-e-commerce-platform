@@ -42,11 +42,28 @@ export default function ProductDetails() {
     );
   }
 
-  const handleAddToCart = () => {
-    toast({
-      title: "Added to cart",
-      description: `${quantity} x ${product.name} added to your cart.`,
-    });
+  const handleAddToCart = async () => {
+    try {
+      const variantId = selectedVariant || (product.variants.length > 0 ? product.variants[0].id : undefined);
+      
+      await backend.cart.add({
+        productId: product.id,
+        variantId,
+        quantity
+      });
+
+      toast({
+        title: "Added to cart",
+        description: `${quantity} x ${product.name} added to your cart.`,
+      });
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add item to cart. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const currentPrice = selectedVariant && product.variants.length > 0 

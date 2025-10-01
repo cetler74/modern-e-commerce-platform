@@ -39,11 +39,11 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
           <div className="flex items-center">
             <div className="h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center">
               <span className="text-white font-medium">
-                {user?.name?.charAt(0) || 'U'}
+                {user?.firstName?.charAt(0) || 'U'}
               </span>
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
+              <p className="text-sm font-medium text-gray-900">{user?.firstName} {user?.lastName}</p>
               <p className="text-xs text-gray-500">{user?.email}</p>
             </div>
           </div>

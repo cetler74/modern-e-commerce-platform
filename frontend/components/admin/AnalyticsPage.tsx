@@ -3,15 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, TrendingDown, Users, ShoppingCart, CreditCard, Package, Calendar } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState('30d');
-  const { getBackend } = useAuth();
 
   const { data: metrics, isLoading } = useQuery({
     queryKey: ['analytics-metrics', period],
-    queryFn: () => getBackend().analytics.getDashboardMetrics({ period }),
+    queryFn: () => backend.analytics.getDashboardMetrics({ period }),
   });
 
   const MetricCard = ({ 
@@ -220,16 +219,16 @@ export default function AnalyticsPage() {
                 <span className="font-medium">{metrics?.activeSubscriptions || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">Monthly Recurring Revenue</span>
-                <span className="font-medium">${(metrics?.mrr || 0).toLocaleString()}</span>
+                <span className="text-sm">Total Revenue</span>
+                <span className="font-medium">${(metrics?.totalRevenue || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">Churn Rate</span>
-                <span className="font-medium">{(metrics?.churnRate || 0).toFixed(1)}%</span>
+                <span className="text-sm">Total Orders</span>
+                <span className="font-medium">{metrics?.totalOrders || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">Average Revenue Per User</span>
-                <span className="font-medium">${(metrics?.arpu || 0).toFixed(2)}</span>
+                <span className="text-sm">Total Customers</span>
+                <span className="font-medium">{metrics?.totalCustomers || 0}</span>
               </div>
             </div>
           </CardContent>

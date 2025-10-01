@@ -6,20 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 export default function SubscriptionsManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const { getBackend } = useAuth();
 
-  const { data: subscriptions, isLoading } = useQuery({
+  const { data: subscriptionsResponse, isLoading } = useQuery({
     queryKey: ['admin-subscriptions', statusFilter],
-    queryFn: () => getBackend().subscriptions.list({
+    queryFn: () => backend.subscriptions.list({
       status: statusFilter || undefined,
       limit: 50
     }),
   });
+
+  const subscriptions = subscriptionsResponse?.subscriptions || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -97,7 +98,7 @@ export default function SubscriptionsManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {subscriptions?.subscriptions.map((subscription) => (
+                  {subscriptions.map((subscription: any) => (
                     <TableRow key={subscription.id}>
                       <TableCell>
                         <div className="font-mono text-sm font-medium">
@@ -123,7 +124,7 @@ export default function SubscriptionsManagement() {
                           {subscription.items.length} item{subscription.items.length !== 1 ? 's' : ''}
                         </div>
                         <div className="text-xs text-gray-600">
-                          {subscription.items.slice(0, 2).map(item => item.productName).join(', ')}
+                          {subscription.items?.slice(0, 2).map((item: any) => item.productName || 'Item').join(', ')}
                           {subscription.items.length > 2 && ` +${subscription.items.length - 2} more`}
                         </div>
                       </TableCell>
@@ -159,7 +160,7 @@ export default function SubscriptionsManagement() {
 
           <div className="flex items-center justify-between mt-6">
             <div className="text-sm text-gray-600">
-              Showing {subscriptions?.subscriptions.length || 0} of {subscriptions?.total || 0} subscriptions
+              Showing {subscriptions.length} subscriptions
             </div>
             <div className="flex space-x-2">
               <Button variant="outline" size="sm">Previous</Button>

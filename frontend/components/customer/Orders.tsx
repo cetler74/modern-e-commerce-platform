@@ -4,16 +4,16 @@ import { Eye, Download, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 export default function Orders() {
   const [filter, setFilter] = useState('all');
-  const { getBackend } = useAuth();
-
-  const { data: orders, isLoading } = useQuery({
+  const { data: ordersResponse, isLoading } = useQuery({
     queryKey: ['customer-orders', filter],
-    queryFn: () => getBackend().orders.list({ status: filter !== 'all' ? filter : undefined }),
+    queryFn: () => backend.orders.list({ status: filter !== 'all' ? filter : undefined }),
   });
+
+  const orders = ordersResponse?.orders || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -78,7 +78,7 @@ export default function Orders() {
                     </CardDescription>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold">${order.total}</div>
+                    <div className="text-2xl font-bold">${order.totalAmount.toFixed(2)}</div>
                     <Badge className={getStatusColor(order.status)}>
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </Badge>
@@ -89,9 +89,9 @@ export default function Orders() {
                 <div className="space-y-4">
                   {/* Order Items */}
                   <div className="border rounded-lg p-4">
-                    <h4 className="font-medium mb-3">Items ({order.items?.length || 0})</h4>
+                    <h4 className="font-medium mb-3">Items</h4>
                     <div className="space-y-2">
-                      {order.items?.map((item, index) => (
+                      {(orders.find(o => o.id === order.id) as any)?.items?.map((item: any, index: number) => (
                         <div key={index} className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             <div className="w-12 h-12 bg-gray-200 rounded"></div>
@@ -108,17 +108,15 @@ export default function Orders() {
                     </div>
                   </div>
 
-                  {/* Shipping Info */}
-                  {order.shippingAddress && (
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-medium mb-2">Shipping Address</h4>
-                      <div className="text-sm text-gray-600">
-                        <div>{order.shippingAddress.street}</div>
-                        <div>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}</div>
-                        <div>{order.shippingAddress.country}</div>
-                      </div>
+                  {/* Order Details */}
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-2">Order Details</h4>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <div>Order #{order.orderNumber}</div>
+                      <div>Email: {order.customerEmail}</div>
+                      <div>Total: ${order.totalAmount.toFixed(2)}</div>
                     </div>
-                  )}
+                  </div>
 
                   {/* Actions */}
                   <div className="flex space-x-2 pt-4 border-t">

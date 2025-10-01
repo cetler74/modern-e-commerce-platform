@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 interface Address {
   id: string;
@@ -36,20 +36,21 @@ export default function Addresses() {
     country: 'United States',
   });
 
-  const { getBackend } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: addresses, isLoading } = useQuery({
+  const { data: addressesResponse, isLoading } = useQuery({
     queryKey: ['user-addresses'],
-    queryFn: () => getBackend().users.getAddresses(),
+    queryFn: () => backend.users.getAddresses(),
   });
 
+  const addresses = addressesResponse?.addresses || [];
+
   const saveAddress = useMutation({
-    mutationFn: (data: typeof formData) =>
+    mutationFn: (data: any) =>
       editingId
-        ? getBackend().users.updateAddress({ id: editingId, ...data })
-        : getBackend().users.addAddress(data),
+        ? backend.users.updateAddress({ id: editingId, ...data })
+        : backend.users.addAddress(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-addresses'] });
       resetForm();
@@ -70,7 +71,7 @@ export default function Addresses() {
 
   const deleteAddress = useMutation({
     mutationFn: (addressId: string) =>
-      getBackend().users.deleteAddress({ id: addressId }),
+      backend.users.deleteAddress({ id: addressId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-addresses'] });
       toast({
@@ -90,7 +91,7 @@ export default function Addresses() {
 
   const setDefaultAddress = useMutation({
     mutationFn: (addressId: string) =>
-      getBackend().users.setDefaultAddress({ id: addressId }),
+      backend.users.updateAddress({ id: addressId, isDefault: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-addresses'] });
       toast({
@@ -280,7 +281,7 @@ export default function Addresses() {
       {/* Addresses List */}
       <div className="grid gap-4 md:grid-cols-2">
         {addresses && addresses.length > 0 ? (
-          addresses.map((address: Address) => (
+          addresses.map((address: any) => (
             <Card key={address.id} className="relative">
               <CardHeader>
                 <div className="flex items-center justify-between">

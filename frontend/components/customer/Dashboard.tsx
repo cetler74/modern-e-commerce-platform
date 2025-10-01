@@ -2,36 +2,37 @@ import { useQuery } from '@tanstack/react-query';
 import { Package, ShoppingBag, CreditCard, Star } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '../../contexts/AuthContext';
+import backend from '~backend/client';
 
 export default function Dashboard() {
-  const { getBackend } = useAuth();
-
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ['customer-dashboard'],
-    queryFn: () => getBackend().users.getProfile(),
+    queryFn: () => backend.users.getProfile(),
   });
 
-  const { data: recentOrders } = useQuery({
+  const { data: recentOrdersResponse } = useQuery({
     queryKey: ['recent-orders'],
-    queryFn: () => getBackend().orders.list({ limit: 5 }),
+    queryFn: () => backend.orders.list({ limit: 5 }),
   });
 
-  const { data: subscriptions } = useQuery({
+  const { data: subscriptionsResponse } = useQuery({
     queryKey: ['customer-subscriptions'],
-    queryFn: () => getBackend().subscriptions.list(),
+    queryFn: () => backend.subscriptions.list({}),
   });
+
+  const recentOrders = recentOrdersResponse?.orders || [];
+  const subscriptions = subscriptionsResponse?.subscriptions || [];
 
   const stats = [
     {
       title: 'Total Orders',
-      value: recentOrders?.length || 0,
+      value: recentOrders.length,
       icon: ShoppingBag,
       color: 'text-blue-600',
     },
     {
       title: 'Active Subscriptions',
-      value: subscriptions?.filter(s => s.status === 'active').length || 0,
+      value: subscriptions.filter((s: any) => s.status === 'active').length,
       icon: Package,
       color: 'text-green-600',
     },
@@ -105,7 +106,7 @@ export default function Dashboard() {
                     <div className="text-sm text-gray-600">{new Date(order.createdAt).toLocaleDateString()}</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-medium">${order.total}</div>
+                    <div className="font-medium">${order.totalAmount?.toFixed(2) || '0.00'}</div>
                     <div className="text-sm text-gray-600 capitalize">{order.status}</div>
                   </div>
                 </div>
@@ -126,17 +127,17 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {subscriptions?.filter(s => s.status === 'active').slice(0, 3).map((subscription) => (
+              {subscriptions?.filter((s: any) => s.status === 'active').slice(0, 3).map((subscription: any) => (
                 <div key={subscription.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
-                    <div className="font-medium">{subscription.productName}</div>
+                    <div className="font-medium">{subscription.planName}</div>
                     <div className="text-sm text-gray-600">
-                      Next delivery: {new Date(subscription.nextDelivery).toLocaleDateString()}
+                      Next billing: {subscription.nextBillingDate ? new Date(subscription.nextBillingDate).toLocaleDateString() : 'N/A'}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-medium">${subscription.price}</div>
-                    <div className="text-sm text-gray-600 capitalize">{subscription.frequency}</div>
+                    <div className="font-medium">Active</div>
+                    <div className="text-sm text-gray-600 capitalize">{subscription.status}</div>
                   </div>
                 </div>
               )) || (
